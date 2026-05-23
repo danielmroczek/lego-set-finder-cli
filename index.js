@@ -1,11 +1,18 @@
+#!/usr/bin/env node
+
 import { mkdir, readFile, writeFile } from "fs/promises";
 import { dirname } from "path";
 import { JSONFilePreset } from "lowdb/node";
 import { RebrickableApi } from "./src/rebrickableApi.js";
+import { renderHtmlReport } from "./src/reportGenerator.js";
 import {
   buildOwnedPartMap,
   rankRecommendations,
 } from "./src/recommendationEngine.js";
+
+function partKey(partNum, colorId) {
+  return `${partNum}|${colorId}`;
+}
 
 function parseArgs(argv) {
   const parsed = {};
@@ -93,8 +100,205 @@ function normalizeOwnedParts(rawParts) {
     );
 }
 
+function extractLegoIdsFromExternalIds(externalIds) {
+  if (!externalIds || typeof externalIds !== "object") {
+    return [];
+  }
+
+  const ids = [];
+
+  Object.entries(externalIds).forEach(([source, value]) => {
+    if (!/lego/i.test(source)) {
+      return;
+    }
+
+    if (Array.isArray(value)) {
+      value.forEach((entry) => {
+        if (entry !== null && entry !== undefined && String(entry).trim() !== "") {
+          ids.push(String(entry));
+        }
+      });
+      return;
+    }
+
+    if (value && typeof value === "object") {
+      Object.values(value).forEach((entry) => {
+        if (Array.isArray(entry)) {
+          entry.forEach((item) => {
+            if (item !== null && item !== undefined && String(item).trim() !== "") {
+              ids.push(String(item));
+            }
+          });
+        } else if (entry !== null && entry !== undefined && String(entry).trim() !== "") {
+          ids.push(String(entry));
+        }
+      });
+      return;
+    }
+
+    if (value !== null && value !== undefined && String(value).trim() !== "") {
+      ids.push(String(value));
+    }
+  });
+
+  return [...new Set(ids)];
+}
+
+function mergePartMetadata(existing, incoming) {
+  if (!existing) {
+    return incoming ?? null;
+  }
+  if (!incoming) {
+    return existing;
+  }
+
+  return {
+    partNum: incoming.partNum ?? existing.partNum,
+    colorId: incoming.colorId ?? existing.colorId,
+    partName: incoming.partName ?? existing.partName,
+    colorName: incoming.colorName ?? existing.colorName,
+    imageUrl: incoming.imageUrl ?? existing.imageUrl,
+    legoPartIds: [...new Set([...(existing.legoPartIds ?? []), ...(incoming.legoPartIds ?? [])])],
+  };
+}
+
+function extractPartMetadata(item) {
+  const partNum = item.part?.part_num ?? item.part_num;
+  const colorId = item.color_id ?? item.color?.id;
+
+  if (!partNum || !Number.isFinite(colorId)) {
+    return null;
+  }
+
+  const legoPartIds = extractLegoIdsFromExternalIds(item.part?.external_ids);
+
+  return {
+    partNum,
+    colorId,
+    partName: item.part?.name ?? null,
+    colorName: item.color?.name ?? null,
+    imageUrl: item.part?.part_img_url ?? item.part_img_url ?? null,
+    legoPartIds,
+  };
+}
+
+function buildOwnedPartMetadataMap(rawOwnedParts) {
+  const metadataMap = new Map();
+
+  rawOwnedParts.forEach((item) => {
+    const metadata = extractPartMetadata(item);
+    if (!metadata) {
+      return;
+    }
+
+    const key = partKey(metadata.partNum, metadata.colorId);
+    const previous = metadataMap.get(key);
+    metadataMap.set(key, mergePartMetadata(previous, metadata));
+  });
+
+  return metadataMap;
+}
+
+function buildRecommendationPartBreakdown(comboSets, ownedPartMap, ownedPartMetadataMap) {
+  const requiredMap = new Map();
+  const requiredMetadataMap = new Map();
+
+  comboSets.forEach((set) => {
+    set.partsMap.forEach((requiredQty, key) => {
+      requiredMap.set(key, (requiredMap.get(key) ?? 0) + requiredQty);
+    });
+
+    if (set.partDetailsByKey instanceof Map) {
+      set.partDetailsByKey.forEach((metadata, key) => {
+        requiredMetadataMap.set(
+          key,
+          mergePartMetadata(requiredMetadataMap.get(key), metadata)
+        );
+      });
+    }
+  });
+
+  const missingParts = [];
+  requiredMap.forEach((requiredQty, key) => {
+    const ownedQty = ownedPartMap.get(key) ?? 0;
+    const missingQty = Math.max(requiredQty - ownedQty, 0);
+    if (missingQty <= 0) {
+      return;
+    }
+
+    const metadata =
+      mergePartMetadata(requiredMetadataMap.get(key), ownedPartMetadataMap.get(key)) ?? {};
+    const [partNumRaw, colorIdRaw] = key.split("|");
+    const partNum = metadata.partNum ?? partNumRaw;
+    const colorId = metadata.colorId ?? Number.parseInt(colorIdRaw, 10);
+
+    missingParts.push({
+      key,
+      partNum,
+      colorId,
+      partName: metadata.partName ?? null,
+      colorName: metadata.colorName ?? null,
+      imageUrl: metadata.imageUrl ?? null,
+      rebrickablePartUrl: `https://rebrickable.com/parts/${partNum}/`,
+      legoPartIds: metadata.legoPartIds ?? [],
+      requiredQty,
+      ownedQty,
+      missingQty,
+    });
+  });
+
+  const unusedParts = [];
+  ownedPartMap.forEach((ownedQty, key) => {
+    const requiredQty = requiredMap.get(key) ?? 0;
+    const unusedQty = Math.max(ownedQty - requiredQty, 0);
+    if (unusedQty <= 0) {
+      return;
+    }
+
+    const metadata =
+      mergePartMetadata(ownedPartMetadataMap.get(key), requiredMetadataMap.get(key)) ?? {};
+    const [partNumRaw, colorIdRaw] = key.split("|");
+    const partNum = metadata.partNum ?? partNumRaw;
+    const colorId = metadata.colorId ?? Number.parseInt(colorIdRaw, 10);
+
+    unusedParts.push({
+      key,
+      partNum,
+      colorId,
+      partName: metadata.partName ?? null,
+      colorName: metadata.colorName ?? null,
+      imageUrl: metadata.imageUrl ?? null,
+      rebrickablePartUrl: `https://rebrickable.com/parts/${partNum}/`,
+      legoPartIds: metadata.legoPartIds ?? [],
+      ownedQty,
+      usedQty: Math.min(ownedQty, requiredQty),
+      unusedQty,
+    });
+  });
+
+  missingParts.sort((a, b) => {
+    if (a.missingQty !== b.missingQty) {
+      return b.missingQty - a.missingQty;
+    }
+    return String(a.partNum).localeCompare(String(b.partNum));
+  });
+
+  unusedParts.sort((a, b) => {
+    if (a.unusedQty !== b.unusedQty) {
+      return b.unusedQty - a.unusedQty;
+    }
+    return String(a.partNum).localeCompare(String(b.partNum));
+  });
+
+  return {
+    missingParts,
+    unusedParts,
+  };
+}
+
 function normalizeSetParts(rawParts) {
   const partsMap = new Map();
+  const partDetailsByKey = new Map();
   let totalParts = 0;
 
   rawParts.forEach((item) => {
@@ -112,11 +316,19 @@ function normalizeSetParts(rawParts) {
 
     const key = `${partNum}|${colorId}`;
     partsMap.set(key, (partsMap.get(key) ?? 0) + quantity);
+    const metadata = extractPartMetadata(item);
+    if (metadata) {
+      partDetailsByKey.set(
+        key,
+        mergePartMetadata(partDetailsByKey.get(key), metadata)
+      );
+    }
     totalParts += quantity;
   });
 
   return {
     partsMap,
+    partDetailsByKey,
     totalParts,
   };
 }
@@ -131,6 +343,7 @@ function printUsage() {
   console.log(
     "  Finds the most likely LEGO set combinations for your Rebrickable part list by maximizing owned-part usage and minimizing missing parts to buy."
   );
+  console.log("  Writes machine-readable output to result.json and a human-readable report to report.html.");
   console.log("");
   console.log("Arguments:");
   console.log("  --config <path>         Path to JSON config file. Default: ./config.json");
@@ -240,6 +453,7 @@ if (ownedParts.length === 0) {
 }
 
 const ownedPartMap = buildOwnedPartMap(ownedParts);
+const ownedPartMetadataMap = buildOwnedPartMetadataMap(rawOwnedParts);
 const totalOwnedQty = ownedParts.reduce((sum, part) => sum + part.quantity, 0);
 
 console.log(`Loaded ${ownedParts.length} items, ${totalOwnedQty} bricks in total.`);
@@ -332,7 +546,7 @@ for (let index = 0; index < initialCandidates.length; index += 1) {
     cacheWrites += 1;
   }
 
-  const { partsMap, totalParts } = normalizeSetParts(setPartsRaw);
+  const { partsMap, partDetailsByKey, totalParts } = normalizeSetParts(setPartsRaw);
 
   if (totalParts === 0) {
     console.log(`  [progress] set ${candidate.set_num} skipped (no parts after filtering).`);
@@ -342,6 +556,7 @@ for (let index = 0; index < initialCandidates.length; index += 1) {
   candidateSets.push({
     ...candidate,
     partsMap,
+    partDetailsByKey,
     totalParts,
   });
 
@@ -422,23 +637,33 @@ const ranked = rankRecommendations(candidateSets, ownedPartMap, {
 const rankingDurationSec = ((Date.now() - rankingStart) / 1000).toFixed(2);
 console.log(`Combination analysis completed in ${rankingDurationSec}s.`);
 
-const output = ranked.map((entry, index) => ({
-  rank: index + 1,
-  score: entry.metrics.score,
-  matchedOwnedQty: entry.metrics.matchedOwnedQty,
-  unusedOwnedQty: entry.metrics.unusedOwnedQty,
-  unusedPercent: Number(((entry.metrics.unusedOwnedQty / totalOwnedQty) * 100).toFixed(2)),
-  missingQty: entry.metrics.missingQty,
-  coverageRatio: Number(entry.metrics.coverageRatio.toFixed(4)),
-  buyRatio: Number(entry.metrics.buyRatio.toFixed(4)),
-  sets: entry.sets.map((set) => ({
-    set_num: set.set_num,
-    name: set.name,
-    year: set.year,
-    num_parts: set.num_parts,
-    url: `https://rebrickable.com/sets/${set.set_num}/`,
-  })),
-}));
+const output = ranked.map((entry, index) => {
+  const breakdown = buildRecommendationPartBreakdown(
+    entry.sets,
+    ownedPartMap,
+    ownedPartMetadataMap
+  );
+
+  return {
+    rank: index + 1,
+    score: entry.metrics.score,
+    matchedOwnedQty: entry.metrics.matchedOwnedQty,
+    unusedOwnedQty: entry.metrics.unusedOwnedQty,
+    unusedPercent: Number(((entry.metrics.unusedOwnedQty / totalOwnedQty) * 100).toFixed(2)),
+    missingQty: entry.metrics.missingQty,
+    coverageRatio: Number(entry.metrics.coverageRatio.toFixed(4)),
+    buyRatio: Number(entry.metrics.buyRatio.toFixed(4)),
+    sets: entry.sets.map((set) => ({
+      set_num: set.set_num,
+      name: set.name,
+      year: set.year,
+      num_parts: set.num_parts,
+      url: `https://rebrickable.com/sets/${set.set_num}/`,
+    })),
+    missingParts: breakdown.missingParts,
+    unusedParts: breakdown.unusedParts,
+  };
+});
 
 console.log("\nMost likely recommendations:\n");
 output.forEach((item) => {
@@ -478,4 +703,8 @@ const result = {
 
 await writeFile("result.json", JSON.stringify(result, null, 2), "utf-8");
 console.log("\nSaved results to result.json");
+
+const htmlReport = await renderHtmlReport(result);
+await writeFile("report.html", htmlReport, "utf-8");
+console.log("Saved HTML report to report.html");
 

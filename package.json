@@ -1,19 +1,43 @@
 {
   "name": "lego-set-finder-cli",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Node.js CLI that analyzes a Rebrickable part list and suggests likely LEGO set combinations to maximize owned-part usage and minimize missing parts.",
+  "main": "./index.js",
+  "bin": {
+    "lego-set-finder": "./index.js"
+  },
   "type": "module",
   "scripts": {
+    "start": "node .",
+    "help": "node . --help",
     "test": "vitest run"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "lego",
+    "rebrickable",
+    "cli",
+    "brick",
+    "inventory",
+    "set-recommendation"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/danielmroczek/lego-set-finder-cli.git"
+  },
+  "bugs": {
+    "url": "https://github.com/danielmroczek/lego-set-finder-cli/issues"
+  },
+  "homepage": "https://github.com/danielmroczek/lego-set-finder-cli#readme",
+  "engines": {
+    "node": ">=18"
+  },
+  "author": "Daniel Mroczek <github@dmro.mozmail.com>",
+  "license": "MIT",
   "devDependencies": {
     "vitest": "^3.2.4"
   },
   "dependencies": {
-    "lowdb": "^7.0.1"
+    "lowdb": "^7.0.1",
+    "mustache": "^4.2.0"
   }
 }

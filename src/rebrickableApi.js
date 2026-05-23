@@ -126,7 +126,7 @@ export class RebrickableApi {
 		return this.#getAllPages(`/lego/sets/${encodeURIComponent(setNum)}/parts/`, {
 			page_size: 1000,
 			inc_part_details: 1,
-			inc_color_details: 0,
+			inc_color_details: 1,
 		});
 	}
 }

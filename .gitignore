@@ -10,6 +10,7 @@ config.json
 .cache/
 result.json
 result.json.bak
+report.html
 
 # Logs
 npm-debug.log*

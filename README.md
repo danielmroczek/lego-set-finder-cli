@@ -3,7 +3,7 @@
 `lego-set-finder-cli` is a Node.js CLI that analyzes a Rebrickable part list and suggests likely LEGO set combinations. It tries to maximize the use of parts you already own and minimize the number of missing parts you would need to buy.
 
 > [!NOTE]
-> This project has no build step. It runs directly with Node.js and writes its results to `result.json`.
+> This project has no build step. It runs directly with Node.js and writes outputs to `result.json` and `report.html`.
 
 ## Features
 
@@ -13,6 +13,7 @@
 - Caches detailed set-part responses in lowdb at `.cache/set-parts-cache.json`.
 - Supports progress logs for long-running runs.
 - Exposes a `--max-unused` filter to keep only recommendations that leave a chosen percentage of owned parts unused or less.
+- Generates a viewable `report.html` with recommendation cards and part-level tables.
 
 ## Requirements
 
@@ -93,7 +94,7 @@ The program performs three main stages:
 
 ## Output
 
-The CLI writes the final report to `result.json` and prints the top recommendations to the console.
+The CLI writes the final report to `result.json`, writes a human-readable report to `report.html`, and prints the top recommendations to the console.
 
 Each recommendation includes:
 
@@ -101,6 +102,8 @@ Each recommendation includes:
 - missing parts to buy
 - unused owned bricks and unused percentage
 - set metadata and direct Rebrickable URLs
+- detailed missing-part rows with images and LEGO external IDs (when available from Rebrickable)
+- detailed unused-owned-part rows with images and LEGO external IDs (when available from Rebrickable)
 
 ## Cache Behavior
 
@@ -139,6 +142,8 @@ vitest run tests/recommendationEngine.test.js
 index.js                     CLI entrypoint
 src/rebrickableApi.js        Rebrickable API client
 src/recommendationEngine.js  Combination scoring and ranking
+src/reportGenerator.js       HTML report template renderer
+templates/report.mustache.html HTML report template
 tests/                       Vitest tests
 assets/                      Historical sample data
 notes/                       Working notes

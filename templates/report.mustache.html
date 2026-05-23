@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LEGO Set Finder Report</title>
+    <style>
+      :root {
+        --bg: #f6f4ec;
+        --ink: #1e2a2f;
+        --ink-soft: #566268;
+        --card: #ffffff;
+        --accent: #c74a0f;
+        --accent-soft: #ffe5d7;
+        --line: #dddbcf;
+        --good: #0f766e;
+        --warn: #a16207;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 0 0, #fcebc7 0, transparent 35%),
+          radial-gradient(circle at 100% 30%, #f6d7bf 0, transparent 25%),
+          var(--bg);
+      }
+
+      .wrap {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 24px 16px 48px;
+      }
+
+      .hero {
+        background: linear-gradient(120deg, #fff8eb 0%, #ffe2d0 100%);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 20px;
+      }
+
+      h1,
+      h2,
+      h3 {
+        margin: 0;
+      }
+
+      .meta-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 10px;
+        margin-top: 16px;
+      }
+
+      .meta-item {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 10px 12px;
+      }
+
+      .meta-item .k {
+        display: block;
+        color: var(--ink-soft);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+      }
+
+      .meta-item .v {
+        display: block;
+        margin-top: 3px;
+        font-weight: 700;
+      }
+
+      .recommendations {
+        margin-top: 20px;
+        display: grid;
+        gap: 16px;
+      }
+
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        overflow: hidden;
+      }
+
+      .card-head {
+        padding: 14px 16px;
+        background: #fefcf7;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .badges {
+        margin-top: 8px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .badge {
+        display: inline-block;
+        border-radius: 999px;
+        background: var(--accent-soft);
+        color: var(--accent);
+        padding: 4px 10px;
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .badge.good {
+        background: #d6f5f2;
+        color: var(--good);
+      }
+
+      .badge.warn {
+        background: #fff4cc;
+        color: var(--warn);
+      }
+
+      .set-list {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .set-list li {
+        padding: 10px 16px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .set-list li:last-child {
+        border-bottom: 0;
+      }
+
+      .set-list a {
+        color: var(--accent);
+        text-decoration: none;
+        font-weight: 700;
+      }
+
+      .set-list a:hover {
+        text-decoration: underline;
+      }
+
+      .tables {
+        display: grid;
+        gap: 14px;
+        padding: 0 16px 16px;
+      }
+
+      .panel {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        overflow: hidden;
+      }
+
+      .panel h3 {
+        padding: 10px 12px;
+        background: #f8f8f3;
+        border-bottom: 1px solid var(--line);
+        font-size: 16px;
+      }
+
+      .panel summary {
+        list-style: none;
+        cursor: pointer;
+        padding: 10px 12px;
+        background: #f8f8f3;
+        border-bottom: 1px solid var(--line);
+        font-size: 16px;
+        font-weight: 700;
+      }
+
+      .panel summary::-webkit-details-marker {
+        display: none;
+      }
+
+      .panel summary::before {
+        content: ">";
+        display: inline-block;
+        margin-right: 8px;
+        transition: transform 0.2s ease;
+      }
+
+      .panel[open] summary::before {
+        transform: rotate(90deg);
+      }
+
+      .scroll {
+        overflow-x: auto;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 720px;
+      }
+
+      th,
+      td {
+        border-bottom: 1px solid var(--line);
+        padding: 8px;
+        vertical-align: top;
+        text-align: left;
+      }
+
+      th {
+        background: #fcfbf7;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        color: var(--ink-soft);
+      }
+
+      td img {
+        width: 42px;
+        height: 42px;
+        object-fit: contain;
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+      }
+
+      .muted {
+        color: var(--ink-soft);
+      }
+
+      .empty {
+        padding: 12px;
+        color: var(--ink-soft);
+      }
+
+      @media (max-width: 720px) {
+        .wrap {
+          padding: 12px 8px 24px;
+        }
+
+        .card-head {
+          padding: 12px;
+        }
+
+        .set-list li,
+        .tables {
+          padding-left: 12px;
+          padding-right: 12px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <section class="hero">
+        <h1>LEGO Set Finder Report</h1>
+        <p class="muted">Generated at {{generatedAt}} for part list {{partListId}}</p>
+        <div class="meta-grid">
+          <div class="meta-item">
+            <span class="k">Top Results</span>
+            <span class="v">{{top}}</span>
+          </div>
+          <div class="meta-item">
+            <span class="k">Max Sets/Combo</span>
+            <span class="v">{{maxSets}}</span>
+          </div>
+          <div class="meta-item">
+            <span class="k">Candidate Limit</span>
+            <span class="v">{{candidateLimit}}</span>
+          </div>
+          <div class="meta-item">
+            <span class="k">Beam Width</span>
+            <span class="v">{{beamWidth}}</span>
+          </div>
+          <div class="meta-item">
+            <span class="k">Max Unused Filter</span>
+            <span class="v">{{maxUnusedPercent}}</span>
+          </div>
+          <div class="meta-item">
+            <span class="k">Owned Part Types</span>
+            <span class="v">{{ownedPartTypes}}</span>
+          </div>
+          <div class="meta-item">
+            <span class="k">Owned Quantity</span>
+            <span class="v">{{ownedPartQty}}</span>
+          </div>
+          <div class="meta-item">
+            <span class="k">Candidate Sets</span>
+            <span class="v">{{candidateSets}}</span>
+          </div>
+          <div class="meta-item">
+            <span class="k">Cache Hits / Misses / Stale</span>
+            <span class="v">{{cacheHits}} / {{cacheMisses}} / {{cacheStale}}</span>
+          </div>
+          <div class="meta-item">
+            <span class="k">Fetched From API</span>
+            <span class="v">{{fetchedFromApi}}</span>
+          </div>
+          <div class="meta-item">
+            <span class="k">Cache File</span>
+            <span class="v">{{cacheFile}}</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="recommendations">
+        {{#hasRecommendations}}
+        {{#recommendations}}
+        <article class="card">
+          <header class="card-head">
+            <h2>Recommendation #{{rank}}</h2>
+            <div class="badges">
+              <span class="badge">Score {{score}}</span>
+              <span class="badge good">Coverage {{coveragePercent}}</span>
+              <span class="badge">Buy Ratio {{buyPercent}}</span>
+              <span class="badge warn">Missing {{missingQty}}</span>
+              <span class="badge">Unused {{unusedOwnedQty}} ({{unusedPercent}})</span>
+            </div>
+          </header>
+
+          <ul class="set-list">
+            {{#sets}}
+            <li>
+              <a href="{{url}}" target="_blank" rel="noreferrer">{{setNum}}</a>
+              <span> - {{name}}</span>
+              <span class="muted"> ({{year}}, {{numParts}} parts)</span>
+            </li>
+            {{/sets}}
+          </ul>
+
+          <div class="tables">
+            <details class="panel">
+              <summary>Missing Parts (Buy List)</summary>
+              {{#hasMissingParts}}
+              <div class="scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Image</th>
+                      <th>Part</th>
+                      <th>Color</th>
+                      <th>Required</th>
+                      <th>Owned</th>
+                      <th>Missing</th>
+                      <th>LEGO ID(s)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {{#missingRows}}
+                    <tr>
+                      <td>
+                        {{#hasImage}}<img src="{{imageUrl}}" alt="{{partNum}}" loading="lazy" />{{/hasImage}}
+                      </td>
+                      <td>
+                        <a href="{{rebrickablePartUrl}}" target="_blank" rel="noreferrer">{{partNum}}</a>
+                        <div class="muted">{{partName}}</div>
+                      </td>
+                      <td>{{colorName}} (#{{colorId}})</td>
+                      <td>{{requiredQty}}</td>
+                      <td>{{ownedQty}}</td>
+                      <td>{{missingQty}}</td>
+                      <td>{{legoPartIdsJoined}}</td>
+                    </tr>
+                    {{/missingRows}}
+                  </tbody>
+                </table>
+              </div>
+              {{/hasMissingParts}}
+              {{^hasMissingParts}}
+              <div class="empty">No missing parts for this recommendation.</div>
+              {{/hasMissingParts}}
+            </details>
+
+            <details class="panel">
+              <summary>Unused Owned Parts</summary>
+              {{#hasUnusedParts}}
+              <div class="scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Image</th>
+                      <th>Part</th>
+                      <th>Color</th>
+                      <th>Owned</th>
+                      <th>Used</th>
+                      <th>Unused</th>
+                      <th>LEGO ID(s)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {{#unusedRows}}
+                    <tr>
+                      <td>
+                        {{#hasImage}}<img src="{{imageUrl}}" alt="{{partNum}}" loading="lazy" />{{/hasImage}}
+                      </td>
+                      <td>
+                        <a href="{{rebrickablePartUrl}}" target="_blank" rel="noreferrer">{{partNum}}</a>
+                        <div class="muted">{{partName}}</div>
+                      </td>
+                      <td>{{colorName}} (#{{colorId}})</td>
+                      <td>{{ownedQty}}</td>
+                      <td>{{usedQty}}</td>
+                      <td>{{unusedQty}}</td>
+                      <td>{{legoPartIdsJoined}}</td>
+                    </tr>
+                    {{/unusedRows}}
+                  </tbody>
+                </table>
+              </div>
+              {{/hasUnusedParts}}
+              {{^hasUnusedParts}}
+              <div class="empty">All owned parts are used in this recommendation.</div>
+              {{/hasUnusedParts}}
+            </details>
+          </div>
+        </article>
+        {{/recommendations}}
+        {{/hasRecommendations}}
+
+        {{^hasRecommendations}}
+        <article class="card">
+          <div class="empty">No recommendations available in result.json.</div>
+        </article>
+        {{/hasRecommendations}}
+      </section>
+    </main>
+  </body>
+</html>
