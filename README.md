@@ -22,6 +22,10 @@
 - A Rebrickable user token
 - A Rebrickable part list ID
 
+### How to get a Rebrickable API key
+
+Rebrickable provides API access after you generate a key from your profile settings page. If you do not have an account yet, register first, then open your Rebrickable profile settings and generate an API key there. The key is what this CLI uses for authenticated API requests.
+
 ## Quick Start
 
 ```bash
@@ -45,6 +49,8 @@ Supported environment variables:
 
 - `REBRICKABLE_API_KEY`
 - `REBRICKABLE_USER_TOKEN`
+
+If you need the API key, go to your Rebrickable profile settings and generate one there. The key can also be stored in `config.json` as `apiKey`.
 
 Example `config.json`:
 
