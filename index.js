@@ -78,6 +78,39 @@ function toPercentInRange(value) {
   return parsed;
 }
 
+function toYearOrNull(value, optionName) {
+  if (value === undefined || value === null || value === "") {
+    return null;
+  }
+
+  const parsed = Number.parseInt(String(value), 10);
+  if (!Number.isFinite(parsed) || parsed < 1900 || parsed > 2100) {
+    throw new Error(`Invalid value for ${optionName}. Expected a year like 1986.`);
+  }
+
+  return parsed;
+}
+
+function passesYearFilter(year, minYear, maxYear) {
+  if (minYear === null && maxYear === null) {
+    return true;
+  }
+
+  if (!Number.isFinite(year)) {
+    return false;
+  }
+
+  if (minYear !== null && year < minYear) {
+    return false;
+  }
+
+  if (maxYear !== null && year > maxYear) {
+    return false;
+  }
+
+  return true;
+}
+
 function normalizeOwnedParts(rawParts) {
   return rawParts
     .map((item) => {
@@ -336,7 +369,7 @@ function normalizeSetParts(rawParts) {
 function printUsage() {
   console.log("Usage:");
   console.log(
-    "  node index.js [--config <path>] --api-key <API_KEY> --user-token <USER_TOKEN> --part-list-id <LIST_ID> [--top <n>] [--max-sets <n>] [--candidate-sets <n>] [--beam-width <n>] [--max-unused <n>] [--cache-file <path>] [--cache-ttl-days <n>] [--no-cache] [--help]"
+    "  node index.js [--config <path>] --api-key <API_KEY> --user-token <USER_TOKEN> --part-list-id <LIST_ID> [--top <n>] [--max-sets <n>] [--candidate-sets <n>] [--beam-width <n>] [--min-year <yyyy>] [--max-year <yyyy>] [--max-unused <n>] [--cache-file <path>] [--cache-ttl-days <n>] [--no-cache] [--help]"
   );
   console.log("");
   console.log("Description:");
@@ -354,6 +387,8 @@ function printUsage() {
   console.log("  --max-sets <n>          Maximum number of sets in one combination. Default: 3.");
   console.log("  --candidate-sets <n>    Number of candidate sets kept after filtering. Default: 120.");
   console.log("  --beam-width <n>        Beam width for combination search (higher = broader/slower). Default: 40.");
+  console.log("  --min-year <yyyy>       Keep only sets from this year and newer (inclusive).");
+  console.log("  --max-year <yyyy>       Keep only sets up to this year (inclusive).");
   console.log("  --max-unused <n>        Keep only final recommendations with unused owned bricks <= n%. Range: 0-100.");
   console.log("  --cache-file <path>     Path to lowdb JSON cache for set parts. Default: ./.cache/set-parts-cache.json");
   console.log("  --cache-ttl-days <n>    Cache TTL in days for set parts. Older entries are refreshed. Default: 7.");
@@ -414,6 +449,18 @@ const beamWidth = toPositiveInt(
 const maxUnusedPercent = toPercentInRange(
   args["max-unused"] ?? config.maxUnused ?? config["max-unused"]
 );
+const minYear = toYearOrNull(
+  args["min-year"] ?? config.minYear ?? config["min-year"],
+  "--min-year"
+);
+const maxYear = toYearOrNull(
+  args["max-year"] ?? config.maxYear ?? config["max-year"],
+  "--max-year"
+);
+
+if (minYear !== null && maxYear !== null && minYear > maxYear) {
+  throw new Error("Invalid year range: --min-year cannot be greater than --max-year.");
+}
 const noCache =
   args["no-cache"] === "true" ||
   config.noCache === true ||
@@ -491,7 +538,21 @@ const initialCandidates = [...candidateScore.values()]
   })
   .slice(0, candidateLimit);
 
-console.log(`Candidates after filtering: ${initialCandidates.length}`);
+const yearFilteredCandidates = initialCandidates.filter((candidate) =>
+  passesYearFilter(candidate.year, minYear, maxYear)
+);
+
+if (minYear !== null || maxYear !== null) {
+  console.log(
+    `Candidates after year filter (${minYear ?? "-inf"}..${maxYear ?? "+inf"}): ${yearFilteredCandidates.length}/${initialCandidates.length}`
+  );
+} else {
+  console.log(`Candidates after filtering: ${yearFilteredCandidates.length}`);
+}
+
+if (yearFilteredCandidates.length === 0) {
+  throw new Error("No candidate sets match the selected year filter. Try widening --min-year/--max-year.");
+}
 
 const candidateSets = [];
 const candidateBuildStart = Date.now();
@@ -501,8 +562,8 @@ let apiFetches = 0;
 let cacheWrites = 0;
 let cacheStale = 0;
 
-for (let index = 0; index < initialCandidates.length; index += 1) {
-  const candidate = initialCandidates[index];
+for (let index = 0; index < yearFilteredCandidates.length; index += 1) {
+  const candidate = yearFilteredCandidates[index];
   const progressNo = index + 1;
   const cachedEntry = setPartsCache.data.setPartsBySetNum[candidate.set_num];
   const updatedAtMs = cachedEntry?.updatedAt ? Date.parse(cachedEntry.updatedAt) : Number.NaN;
@@ -515,7 +576,7 @@ for (let index = 0; index < initialCandidates.length; index += 1) {
     cacheHits += 1;
     setPartsRaw = cachedEntry.parts;
     console.log(
-      `  [progress] cache hit for set ${candidate.set_num} (${progressNo}/${initialCandidates.length})`
+      `  [progress] cache hit for set ${candidate.set_num} (${progressNo}/${yearFilteredCandidates.length})`
     );
   } else {
     cacheMisses += 1;
@@ -531,7 +592,7 @@ for (let index = 0; index < initialCandidates.length; index += 1) {
     }
 
     console.log(
-      `  [progress] fetching set parts for ${candidate.set_num} (${progressNo}/${initialCandidates.length}) [${fetchReason}]...`
+      `  [progress] fetching set parts for ${candidate.set_num} (${progressNo}/${yearFilteredCandidates.length}) [${fetchReason}]...`
     );
 
     setPartsRaw = await api.getSetParts(candidate.set_num);
@@ -562,7 +623,7 @@ for (let index = 0; index < initialCandidates.length; index += 1) {
 
   if (
     progressNo % 10 === 0 ||
-    progressNo === initialCandidates.length ||
+    progressNo === yearFilteredCandidates.length ||
     progressNo === 1
   ) {
     const elapsedSec = ((Date.now() - candidateBuildStart) / 1000).toFixed(1);
@@ -578,7 +639,7 @@ if (candidateSets.length === 0) {
 
 const candidateBuildDurationSec = ((Date.now() - candidateBuildStart) / 1000).toFixed(2);
 console.log(
-  `Built candidate details: ${candidateSets.length}/${initialCandidates.length} in ${candidateBuildDurationSec}s.`
+  `Built candidate details: ${candidateSets.length}/${yearFilteredCandidates.length} in ${candidateBuildDurationSec}s.`
 );
 console.log(
   `Cache summary: hits=${cacheHits}, misses=${cacheMisses}, stale=${cacheStale}, fetchedFromApi=${apiFetches}, writtenToCache=${cacheWrites}, ttlDays=${cacheTtlDays}`
@@ -681,11 +742,15 @@ const result = {
     maxSets,
     candidateLimit,
     beamWidth,
+    minYear,
+    maxYear,
     maxUnusedPercent,
   },
   stats: {
     ownedPartTypes: ownedParts.length,
     ownedPartQty: totalOwnedQty,
+    candidateSetsAfterInitialFilter: initialCandidates.length,
+    candidateSetsAfterYearFilter: yearFilteredCandidates.length,
     candidateSets: candidateSets.length,
     cache: {
       file: cacheFile,

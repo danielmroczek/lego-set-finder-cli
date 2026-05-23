@@ -5,5 +5,7 @@
   "top": 8,
   "maxSets": 3,
   "candidateSets": 120,
-  "beamWidth": 40
+  "beamWidth": 40,
+  "minYear": 1986,
+  "maxYear": 1995
 }

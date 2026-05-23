@@ -57,6 +57,8 @@ Example `config.json`:
   "maxSets": 3,
   "candidateSets": 120,
   "beamWidth": 40,
+  "minYear": 1986,
+  "maxYear": 1995,
   "maxUnused": 10,
   "cacheFile": ".cache/set-parts-cache.json",
   "cacheTtlDays": 7,
@@ -78,6 +80,8 @@ Example `config.json`:
 | `--max-sets <n>` | Maximum number of sets in one combination | `3` |
 | `--candidate-sets <n>` | Number of candidate sets kept after filtering | `120` |
 | `--beam-width <n>` | Beam width used during combination search | `40` |
+| `--min-year <yyyy>` | Keep only sets from this year and newer (inclusive) | unset |
+| `--max-year <yyyy>` | Keep only sets up to this year (inclusive) | unset |
 | `--max-unused <0-100>` | Keep only recommendations with unused owned bricks at or below this percentage | unset |
 | `--cache-file <path>` | Path to the lowdb cache file | `.cache/set-parts-cache.json` |
 | `--cache-ttl-days <n>` | Cache TTL in days for set-part responses | `7` |
