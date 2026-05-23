@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# Environment and local config
+.env
+.env.*
+config.json
+
+# Generated cache and outputs
+.cache/
+result.json
+result.json.bak
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Coverage and test artifacts
+coverage/
+
+# Editor settings
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db

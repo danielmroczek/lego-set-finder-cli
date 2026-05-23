@@ -1,0 +1,9 @@
+{
+  "apiKey": "WSTAW_TUTAJ_REBRICKABLE_API_KEY",
+  "userToken": "WSTAW_TUTAJ_REBRICKABLE_USER_TOKEN",
+  "partListId": "WSTAW_TUTAJ_ID_PART_LISTY",
+  "top": 8,
+  "maxSets": 3,
+  "candidateSets": 120,
+  "beamWidth": 40
+}

@@ -1,0 +1,19 @@
+{
+  "name": "lego-set-finder-cli",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "vitest": "^3.2.4"
+  },
+  "dependencies": {
+    "lowdb": "^7.0.1"
+  }
+}
