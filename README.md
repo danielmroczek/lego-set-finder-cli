@@ -69,6 +69,27 @@ Example `config.json`:
 > [!IMPORTANT]
 > Keep real credentials out of version control. The repository already ignores `config.json` and `.env`.
 
+### Interactive Config Setup
+
+You can generate or refresh credentials in `config.json` interactively:
+
+```bash
+npm run setup:config
+```
+
+What it does:
+
+- asks for your Rebrickable email (or username) and password
+- requests a fresh `userToken` from Rebrickable
+- reuses the first available API key from `REBRICKABLE_API_KEY` or existing `config.json` when possible
+- if no API key is available, prompts for it before requesting the token
+- asks before overwriting existing config credentials
+
+Notes:
+
+- email/password are used only for the token request and are not written to disk
+- Rebrickable requires API key auth for token endpoint and does not provide API key retrieval via email/password endpoint
+
 ## CLI Reference
 
 | Flag | Description | Default |

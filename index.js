@@ -431,7 +431,23 @@ const partListId =
   config["part-list-id"] ??
   config.partList;
 
-if (!apiKey || !userToken || !partListId) {
+const missingRequiredArgs = [];
+if (!apiKey) {
+  missingRequiredArgs.push("--api-key (or REBRICKABLE_API_KEY / config.apiKey)");
+}
+if (!userToken) {
+  missingRequiredArgs.push("--user-token (or REBRICKABLE_USER_TOKEN / config.userToken)");
+}
+if (!partListId) {
+  missingRequiredArgs.push("--part-list-id (or config.partListId)");
+}
+
+if (missingRequiredArgs.length > 0) {
+  console.error("Missing required arguments:");
+  missingRequiredArgs.forEach((item) => {
+    console.error(`  - ${item}`);
+  });
+  console.error("");
   printUsage();
   process.exit(1);
 }

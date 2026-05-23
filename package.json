@@ -10,6 +10,8 @@
   "scripts": {
     "start": "node .",
     "help": "node . --help",
+    "setup:config": "node ./scripts/setup-config.js",
+    "setup:config:force": "node ./scripts/setup-config.js --force",
     "test": "vitest run"
   },
   "keywords": [
