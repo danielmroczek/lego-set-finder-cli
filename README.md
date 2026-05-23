@@ -170,14 +170,12 @@ vitest run tests/recommendationEngine.test.js
 ## Project Structure
 
 ```text
-index.js                     CLI entrypoint
-src/rebrickableApi.js        Rebrickable API client
-src/recommendationEngine.js  Combination scoring and ranking
-src/reportGenerator.js       HTML report template renderer
-templates/report.mustache.html HTML report template
-tests/                       Vitest tests
-assets/                      Historical sample data
-notes/                       Working notes
+index.js                        CLI entrypoint
+src/rebrickableApi.js           Rebrickable API client
+src/recommendationEngine.js     Combination scoring and ranking
+src/reportGenerator.js          HTML report template renderer
+templates/report.mustache.html  HTML report template
+tests/                          Vitest tests
 ```
 
 ## Troubleshooting
